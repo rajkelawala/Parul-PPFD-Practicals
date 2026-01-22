@@ -10,7 +10,7 @@ class StaticServer(SimpleHTTPRequestHandler):
     
 def run_server():
     with HTTPServer((HOST, PORT), StaticServer) as server:
-        print(f"Serving on http:// {HOST}:{PORT}")
+        print(f"Serving on http://{HOST}:{PORT}")
         server.serve_forever()
 
 if __name__ == "__main__":
