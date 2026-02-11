@@ -1,0 +1,39 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AJAX Example</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      h1 {
+        text-align: center;
+      }
+      form {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      li {
+        margin: 5px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AJAX Item List</h1>
+    <form id="add-item-form">
+      <input type="text" id="item-input" placeholder="Enter an item" required />
+      <button type="submit">Add Item</button>
+    </form>
+    <ul id="item-list">
+      <!-- Dynamically updated list -->
+    </ul>
+    <script src="/static/script.js"></script>
+  </body>
+</html>
