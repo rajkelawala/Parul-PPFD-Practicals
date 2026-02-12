@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weather App</title>
+</head>
+<body>
+
+    <h2>Weather Application (Third-Party API)</h2>
+
+    <form method="POST">
+        {% csrf_token %}
+        <input type="text" name="city" placeholder="Enter city (Surat, Mumbai, Delhi)" required>
+        <button type="submit">Get Weather</button>
+    </form>
+
+    {% if weather %}
+        <h3>City: {{ weather.city }}</h3>
+        <h3>Temperature: {{ weather.temperature }} °C</h3>
+    {% endif %}
+
+</body>
+</html>
