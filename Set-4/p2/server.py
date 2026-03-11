@@ -12,7 +12,6 @@ def add_item():
     if new_item:
         items.append(new_item) 
         return jsonify({"success": True, "items": items})
-    list
     return jsonify({"success": False, "error": "No item provided"})
 
 if __name__ == "__main__":

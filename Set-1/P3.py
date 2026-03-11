@@ -1,6 +1,7 @@
 import random
 import string
 
+
 # Ask user for password length
 length = int(input("Enter password length: "))
 

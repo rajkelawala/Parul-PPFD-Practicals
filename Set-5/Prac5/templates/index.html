@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validation &amp; Error Handling – Test Page</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; background: #f5f5f5; color: #222; }
+    h1 { font-size: 1.3rem; margin-bottom: 0.25rem; }
+    .sub { color: #555; font-size: 0.9rem; margin-bottom: 1rem; }
+    section { background: #fff; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    section h2 { font-size: 1rem; margin: 0 0 0.75rem 0; color: #333; }
+    label { display: block; margin-bottom: 0.25rem; font-size: 0.85rem; }
+    input { width: 100%; max-width: 260px; padding: 0.5rem; margin-bottom: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+    button { padding: 0.5rem 1rem; margin-right: 0.5rem; margin-top: 0.25rem; background: #2563eb; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
+    button:hover { background: #1d4ed8; }
+    button.danger { background: #dc3545; }
+    button.danger:hover { background: #bb2d3b; }
+    .message { padding: 0.75rem 1rem; border-radius: 6px; margin-top: 0.5rem; font-size: 0.9rem; }
+    .message.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .message.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .message .status { font-weight: 600; margin-bottom: 0.25rem; }
+    #user-list { font-size: 0.85rem; max-height: 200px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>Validation &amp; Error Handling – Test Page</h1>
+  <p class="sub">Try invalid inputs (empty form, bad email, age &lt; 18, duplicate email) and valid ones. Errors appear in red, success in green. Check the console (F12) for full responses.</p>
+
+  <section>
+    <h2>Create user (POST /users)</h2>
+    <label for="create-name">Name</label>
+    <input type="text" id="create-name" placeholder="e.g. Dave">
+    <label for="create-email">Email</label>
+    <input type="text" id="create-email" placeholder="e.g. dave@example.com">
+    <label for="create-age">Age (must be 18+)</label>
+    <input type="number" id="create-age" placeholder="25" min="18">
+    <button type="button" id="btn-create">Create user</button>
+  </section>
+
+  <section>
+    <h2>Update user (PUT /users/:id)</h2>
+    <label for="update-id">User ID</label>
+    <input type="number" id="update-id" placeholder="1" min="1">
+    <label for="update-name">Name</label>
+    <input type="text" id="update-name" placeholder="New name">
+    <label for="update-email">Email</label>
+    <input type="text" id="update-email" placeholder="new@example.com">
+    <label for="update-age">Age (18+)</label>
+    <input type="number" id="update-age" placeholder="30" min="18">
+    <button type="button" id="btn-update">Update user</button>
+  </section>
+
+  <section>
+    <h2>Get all users (GET /users)</h2>
+    <button type="button" id="btn-get-all">Fetch all users</button>
+    <div id="user-list"></div>
+  </section>
+
+  <section>
+    <h2>Delete user (DELETE /users/:id)</h2>
+    <label for="delete-id">User ID</label>
+    <input type="number" id="delete-id" placeholder="1" min="1">
+    <button type="button" id="btn-delete" class="danger">Delete user</button>
+  </section>
+
+  <section>
+    <h2>Error message (from API)</h2>
+    <div id="error-box" class="message error" style="display: none;"></div>
+  </section>
+
+  <section>
+    <h2>Success message</h2>
+    <div id="success-box" class="message success" style="display: none;"></div>
+  </section>
+
+  <script>
+    /*
+     * How does the frontend read the response status?
+     * fetch() gives us a "response" object. response.status is the HTTP status code (200, 400, 404, 500).
+     * We use it to decide: show error (4xx, 5xx) or success (2xx). So the backend's status code
+     * drives what the user sees.
+     *
+     * How are JSON errors parsed?
+     * We call response.json() to get the body. Our API returns { success: false, error: "...", details: "..." }
+     * for errors. We read result.details (or result.error) and show it in the error box.
+     *
+     * Why is backend validation still required even if the frontend validates?
+     * Users can skip our form and call the API directly (Postman, curl, or another site). So the server
+     * must always check. Frontend validation only improves UX; it does not protect the database or other clients.
+     */
+
+    var errorBox = document.getElementById("error-box");
+    var successBox = document.getElementById("success-box");
+    var userList = document.getElementById("user-list");
+
+    function showError(statusCode, text) {
+      successBox.style.display = "none";
+      errorBox.style.display = "block";
+      errorBox.innerHTML = "<span class=\"status\">HTTP " + statusCode + "</span>" + text;
+      console.log("Error displayed:", statusCode, text);
+    }
+
+    function showSuccess(statusCode, text) {
+      errorBox.style.display = "none";
+      successBox.style.display = "block";
+      successBox.innerHTML = "<span class=\"status\">HTTP " + statusCode + "</span>" + text;
+      console.log("Success displayed:", statusCode, text);
+    }
+
+    function escapeHtml(str) {
+      if (str == null) return "";
+      var div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function handleResponse(response, responseData) {
+      var status = response.status;
+      console.log("Response status:", status, "body:", responseData);
+      if (status >= 200 && status < 300) {
+        var msg = responseData.data != null ? JSON.stringify(responseData.data, null, 2) : (responseData.message || "OK");
+        showSuccess(status, "<pre style=\"margin:0; white-space:pre-wrap;\">" + escapeHtml(msg) + "</pre>");
+      } else {
+        var details = responseData.details || responseData.error || JSON.stringify(responseData);
+        showError(status, escapeHtml(details));
+      }
+    }
+
+    document.getElementById("btn-create").addEventListener("click", function () {
+      var name = document.getElementById("create-name").value.trim();
+      var email = document.getElementById("create-email").value.trim();
+      var age = document.getElementById("create-age").value.trim();
+      var body = JSON.stringify({ name: name, email: email, age: age === "" ? null : age });
+      console.log("POST /users body:", body);
+      fetch("/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body
+      })
+        .then(function (response) { return response.json().then(function (data) { return { response: response, data: data }; }); })
+        .then(function (result) {
+          handleResponse(result.response, result.data);
+          if (result.response.status === 201) {
+            document.getElementById("create-name").value = "";
+            document.getElementById("create-email").value = "";
+            document.getElementById("create-age").value = "";
+          }
+        })
+        .catch(function (err) {
+          showError(0, "Network or parse error: " + err.message);
+          console.error(err);
+        });
+    });
+
+    document.getElementById("btn-update").addEventListener("click", function () {
+      var id = document.getElementById("update-id").value.trim();
+      var name = document.getElementById("update-name").value.trim();
+      var email = document.getElementById("update-email").value.trim();
+      var age = document.getElementById("update-age").value.trim();
+      if (!id) {
+        showError(400, "Enter a user ID.");
+        return;
+      }
+      var body = JSON.stringify({ name: name, email: email, age: age === "" ? null : age });
+      console.log("PUT /users/" + id + " body:", body);
+      fetch("/users/" + id, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: body
+      })
+        .then(function (response) { return response.json().then(function (data) { return { response: response, data: data }; }); })
+        .then(function (result) { handleResponse(result.response, result.data); })
+        .catch(function (err) {
+          showError(0, "Network or parse error: " + err.message);
+          console.error(err);
+        });
+    });
+
+    document.getElementById("btn-get-all").addEventListener("click", function () {
+      console.log("GET /users");
+      fetch("/users")
+        .then(function (response) { return response.json().then(function (data) { return { response: response, data: data }; }); })
+        .then(function (result) {
+          handleResponse(result.response, result.data);
+          if (result.response.status === 200 && result.data.data && Array.isArray(result.data.data)) {
+            userList.innerHTML = "<pre style=\"margin:0; white-space:pre-wrap;\">" + escapeHtml(JSON.stringify(result.data.data, null, 2)) + "</pre>";
+          } else {
+            userList.innerHTML = "";
+          }
+        })
+        .catch(function (err) {
+          showError(0, "Network or parse error: " + err.message);
+          console.error(err);
+        });
+    });
+
+    document.getElementById("btn-delete").addEventListener("click", function () {
+      var id = document.getElementById("delete-id").value.trim();
+      if (!id) {
+        showError(400, "Enter a user ID.");
+        return;
+      }
+      console.log("DELETE /users/" + id);
+      fetch("/users/" + id, { method: "DELETE" })
+        .then(function (response) { return response.json().then(function (data) { return { response: response, data: data }; }); })
+        .then(function (result) { handleResponse(result.response, result.data); })
+        .catch(function (err) {
+          showError(0, "Network or parse error: " + err.message);
+          console.error(err);
+        });
+    });
+  </script>
+</body>
+</html>

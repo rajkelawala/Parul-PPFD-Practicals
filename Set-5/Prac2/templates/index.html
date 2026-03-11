@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRUD API – Test Page</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; background: #f8f9fa; color: #212529; }
+    h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+    .sub { color: #6c757d; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    section { background: #fff; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    section h2 { font-size: 1rem; margin: 0 0 0.75rem 0; color: #495057; }
+    label { display: block; margin-bottom: 0.25rem; font-size: 0.85rem; color: #495057; }
+    input[type="text"], input[type="number"] { width: 100%; max-width: 280px; padding: 0.5rem; margin-bottom: 0.5rem; border: 1px solid #ced4da; border-radius: 4px; font-size: 0.9rem; }
+    button { background: #0d6efd; color: #fff; border: none; padding: 0.5rem 1rem; font-size: 0.9rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem; margin-top: 0.25rem; }
+    button:hover { background: #0b5ed7; }
+    button.danger { background: #dc3545; }
+    button.danger:hover { background: #bb2d3b; }
+    #output { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 8px; font-family: ui-monospace, monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-all; min-height: 80px; margin-top: 1rem; }
+    .method { color: #34d399; }
+    .url { color: #60a5fa; }
+  </style>
+</head>
+<body>
+  <h1>CRUD API – Test Page</h1>
+  <p class="sub">Use the sections below to call each endpoint. The response appears in the box at the bottom and in the browser console (F12).</p>
+
+  <!-- CREATE: POST /users -->
+  <section>
+    <h2>1. Create user (POST /users)</h2>
+    <label for="create-name">Name</label>
+    <input type="text" id="create-name" placeholder="e.g. Dave">
+    <label for="create-email">Email</label>
+    <input type="text" id="create-email" placeholder="e.g. dave@example.com">
+    <button type="button" id="btn-create">Create user</button>
+  </section>
+
+  <!-- READ ALL: GET /users -->
+  <section>
+    <h2>2. Get all users (GET /users)</h2>
+    <button type="button" id="btn-get-all">Fetch all users</button>
+  </section>
+
+  <!-- READ ONE: GET /users/:id -->
+  <section>
+    <h2>3. Get one user (GET /users/:id)</h2>
+    <label for="get-one-id">User ID</label>
+    <input type="number" id="get-one-id" placeholder="e.g. 1" min="1">
+    <button type="button" id="btn-get-one">Fetch this user</button>
+  </section>
+
+  <!-- UPDATE: PUT /users/:id -->
+  <section>
+    <h2>4. Update user (PUT /users/:id)</h2>
+    <label for="update-id">User ID</label>
+    <input type="number" id="update-id" placeholder="e.g. 1" min="1">
+    <label for="update-name">New name</label>
+    <input type="text" id="update-name" placeholder="e.g. Alice Smith">
+    <label for="update-email">New email</label>
+    <input type="text" id="update-email" placeholder="e.g. alice.smith@example.com">
+    <button type="button" id="btn-update">Update user</button>
+  </section>
+
+  <!-- DELETE: DELETE /users/:id -->
+  <section>
+    <h2>5. Delete user (DELETE /users/:id)</h2>
+    <label for="delete-id">User ID</label>
+    <input type="number" id="delete-id" placeholder="e.g. 1" min="1">
+    <button type="button" id="btn-delete" class="danger">Delete user</button>
+  </section>
+
+  <section>
+    <h2>API response (also in console)</h2>
+    <div id="output">Click a button above to call the API. Response will appear here and in the console (F12 → Console).</div>
+  </section>
+
+  <script>
+    /*
+     * What is fetch?
+     * fetch() is a built-in browser function that sends an HTTP request to a URL
+     * and gives you the server's response. It returns a "Promise" – we use .then()
+     * to run code when the response arrives.
+     *
+     * What is an HTTP request?
+     * When you click a button and we call fetch("/users"), the browser sends a message
+     * to the server: "GET /users". The server runs our Python code and sends back
+     * a response (status code + body, often JSON).
+     *
+     * What is JSON parsing?
+     * The server sends text like: [{"id":1,"name":"Alice",...}]
+     * response.json() converts that text into a JavaScript object/array we can use.
+     */
+
+    var output = document.getElementById("output");
+
+    function showResponse(label, responseData, statusCode) {
+      var text = label + " (HTTP " + statusCode + ")\n\n" + JSON.stringify(responseData, null, 2);
+      output.textContent = text;
+      console.log(label, responseData);
+    }
+
+    function showError(message) {
+      output.textContent = "Error: " + message;
+      console.error(message);
+    }
+
+    // ----- 1. Create user: POST /users -----
+    document.getElementById("btn-create").addEventListener("click", function () {
+      var nameInput = document.getElementById("create-name");
+      var emailInput = document.getElementById("create-email");
+      var name = nameInput.value.trim();
+      var email = emailInput.value.trim();
+      if (!name || !email) {
+        showError("Please enter name and email.");
+        return;
+      }
+      // We send a "request body" as JSON. The server reads this with request.get_json().
+      var body = JSON.stringify({ name: name, email: email });
+      console.log("Sending POST /users with body:", body);
+      fetch("/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { status: response.status, data: data };
+          });
+        })
+        .then(function (result) {
+          showResponse("POST /users – Create user", result.data, result.status);
+          if (result.status === 201) {
+            nameInput.value = "";
+            emailInput.value = "";
+          }
+        })
+        .catch(function (err) {
+          showError(err.message);
+        });
+    });
+
+    // ----- 2. Get all users: GET /users -----
+    document.getElementById("btn-get-all").addEventListener("click", function () {
+      console.log("Sending GET /users");
+      fetch("/users")
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { status: response.status, data: data };
+          });
+        })
+        .then(function (result) {
+          showResponse("GET /users – All users", result.data, result.status);
+        })
+        .catch(function (err) {
+          showError(err.message);
+        });
+    });
+
+    // ----- 3. Get one user: GET /users/:id -----
+    document.getElementById("btn-get-one").addEventListener("click", function () {
+      var idInput = document.getElementById("get-one-id");
+      var id = idInput.value.trim();
+      if (!id) {
+        showError("Please enter a user ID.");
+        return;
+      }
+      var url = "/users/" + id;
+      console.log("Sending GET " + url);
+      fetch(url)
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { status: response.status, data: data };
+          });
+        })
+        .then(function (result) {
+          showResponse("GET /users/" + id, result.data, result.status);
+        })
+        .catch(function (err) {
+          showError(err.message);
+        });
+    });
+
+    // ----- 4. Update user: PUT /users/:id -----
+    document.getElementById("btn-update").addEventListener("click", function () {
+      var idInput = document.getElementById("update-id");
+      var nameInput = document.getElementById("update-name");
+      var emailInput = document.getElementById("update-email");
+      var id = idInput.value.trim();
+      var name = nameInput.value.trim();
+      var email = emailInput.value.trim();
+      if (!id || !name || !email) {
+        showError("Please enter ID, name, and email.");
+        return;
+      }
+      var url = "/users/" + id;
+      var body = JSON.stringify({ name: name, email: email });
+      console.log("Sending PUT " + url + " with body:", body);
+      fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: body
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { status: response.status, data: data };
+          });
+        })
+        .then(function (result) {
+          showResponse("PUT /users/" + id + " – Update user", result.data, result.status);
+        })
+        .catch(function (err) {
+          showError(err.message);
+        });
+    });
+
+    // ----- 5. Delete user: DELETE /users/:id -----
+    document.getElementById("btn-delete").addEventListener("click", function () {
+      var idInput = document.getElementById("delete-id");
+      var id = idInput.value.trim();
+      if (!id) {
+        showError("Please enter a user ID.");
+        return;
+      }
+      var url = "/users/" + id;
+      console.log("Sending DELETE " + url);
+      fetch(url, { method: "DELETE" })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { status: response.status, data: data };
+          });
+        })
+        .then(function (result) {
+          showResponse("DELETE /users/" + id, result.data, result.status);
+        })
+        .catch(function (err) {
+          showError(err.message);
+        });
+    });
+  </script>
+</body>
+</html>

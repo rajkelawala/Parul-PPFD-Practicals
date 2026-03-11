@@ -4,9 +4,8 @@ print("1. Convert Fahrenheit to Celsius")
 print("2. Convert Celsius to Fahrenheit")
 
 # Get user's choice
-choice = input("Enter your choice (1 or 2): ")
+choice = input("Enter your choice (1 or 2): ")#1
 if choice == "1":
- # Fahrenheit to Celsius conversion
     fahrenheit = float(input("Enter temperature in Fahrenheit: "))
     celsius = (fahrenheit - 32) * 5 / 9
     print(f"{fahrenheit}°F is equal to {celsius:.2f}°C")

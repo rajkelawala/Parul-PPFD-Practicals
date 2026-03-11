@@ -1,0 +1,2 @@
+# Prac2 CRUD API – install with: pip install -r requirements.txt
+Flask==3.0.0

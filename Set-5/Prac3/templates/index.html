@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JWT Authentication – Test Page</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; background: #f5f5f5; color: #222; }
+    h1 { font-size: 1.35rem; margin-bottom: 0.25rem; }
+    .sub { color: #555; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    section { background: #fff; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    section h2 { font-size: 1rem; margin: 0 0 0.75rem 0; color: #333; }
+    label { display: block; margin-bottom: 0.25rem; font-size: 0.85rem; color: #444; }
+    input[type="text"], input[type="password"] { width: 100%; max-width: 280px; padding: 0.5rem; margin-bottom: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; }
+    button { background: #2563eb; color: #fff; border: none; padding: 0.5rem 1rem; font-size: 0.9rem; border-radius: 4px; cursor: pointer; margin-right: 0.5rem; margin-top: 0.25rem; }
+    button:hover { background: #1d4ed8; }
+    #token-box, #response-box { background: #1e293b; color: #e2e8f0; padding: 0.75rem 1rem; border-radius: 6px; font-family: ui-monospace, monospace; font-size: 0.75rem; word-break: break-all; min-height: 40px; margin-top: 0.5rem; }
+    #response-box { white-space: pre-wrap; }
+    .success { color: #22c55e; }
+    .error { color: #ef4444; }
+    .hint { font-size: 0.8rem; color: #666; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>JWT Authentication – Test Page</h1>
+  <p class="sub">Register, login to get a token, then call the protected /profile route. Watch the response area and the browser console (F12).</p>
+
+  <!-- 1. Register -->
+  <section>
+    <h2>1. Register (POST /register)</h2>
+    <label for="reg-name">Name</label>
+    <input type="text" id="reg-name" placeholder="e.g. Bob">
+    <label for="reg-email">Email</label>
+    <input type="text" id="reg-email" placeholder="e.g. bob@example.com">
+    <label for="reg-password">Password</label>
+    <input type="password" id="reg-password" placeholder="e.g. secret123">
+    <button type="button" id="btn-register">Register</button>
+  </section>
+
+  <!-- 2. Login -->
+  <section>
+    <h2>2. Login (POST /login)</h2>
+    <p class="hint">Sample user: alice@example.com / password123</p>
+    <label for="login-email">Email</label>
+    <input type="text" id="login-email" placeholder="alice@example.com">
+    <label for="login-password">Password</label>
+    <input type="password" id="login-password" placeholder="password123">
+    <button type="button" id="btn-login">Login</button>
+  </section>
+
+  <!-- Token display -->
+  <section>
+    <h2>Current token (stored in localStorage)</h2>
+    <p class="hint">After login, the token is saved here and sent automatically with GET /profile.</p>
+    <div id="token-box">No token yet. Log in to get one.</div>
+    <button type="button" id="btn-clear-token">Clear token</button>
+  </section>
+
+  <!-- 3. Protected route -->
+  <section>
+    <h2>3. Protected route (GET /profile)</h2>
+    <p class="hint">Requires a valid JWT in the Authorization header. Try with and without token.</p>
+    <button type="button" id="btn-profile">Get my profile</button>
+  </section>
+
+  <!-- API response -->
+  <section>
+    <h2>API response (also in console)</h2>
+    <div id="response-box">Responses will appear here. Open DevTools (F12) → Console to see logs.</div>
+  </section>
+
+  <script>
+    /*
+     * What is localStorage?
+     * localStorage is a place in the browser where we can store a string (e.g. the JWT).
+     * It persists when you close the tab and reopen it. We use it so that after login,
+     * we can send the token with every request to /profile without asking the user again.
+     *
+     * What is the Authorization header?
+     * It is an HTTP header the client sends to tell the server "here is my proof of identity".
+     * The server reads it and, if it contains a valid JWT, allows access to protected routes.
+     *
+     * How does Bearer token work?
+     * We send: Authorization: Bearer <the-jwt-string>
+     * "Bearer" is a convention meaning "this value is a token". The server looks for
+     * "Authorization", then takes the part after "Bearer " as the JWT.
+     *
+     * How does fetch send headers?
+     * We pass an object: fetch(url, { headers: { "Authorization": "Bearer " + token } }).
+     * The browser adds these headers to the HTTP request when it sends it to the server.
+     */
+
+    var tokenBox = document.getElementById("token-box");
+    var responseBox = document.getElementById("response-box");
+
+    var TOKEN_KEY = "jwt_token";
+
+    function getStoredToken() {
+      return localStorage.getItem(TOKEN_KEY);
+    }
+
+    function setStoredToken(token) {
+      if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(TOKEN_KEY);
+      }
+      updateTokenDisplay();
+    }
+
+    function updateTokenDisplay() {
+      var t = getStoredToken();
+      if (t) {
+        tokenBox.textContent = t;
+        tokenBox.classList.remove("error");
+      } else {
+        tokenBox.textContent = "No token yet. Log in to get one.";
+        tokenBox.classList.remove("error");
+      }
+    }
+
+    function showResponse(message, isError) {
+      responseBox.textContent = message;
+      responseBox.className = isError ? "error" : "";
+      console.log("API response:", message);
+    }
+
+    updateTokenDisplay();
+
+    // ----- Register -----
+    document.getElementById("btn-register").addEventListener("click", function () {
+      var name = document.getElementById("reg-name").value.trim();
+      var email = document.getElementById("reg-email").value.trim();
+      var password = document.getElementById("reg-password").value.trim();
+      if (!name || !email || !password) {
+        showResponse("Please fill name, email, and password.", true);
+        return;
+      }
+      var body = JSON.stringify({ name: name, email: email, password: password });
+      console.log("POST /register", body);
+      fetch("/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { status: response.status, data: data };
+          });
+        })
+        .then(function (result) {
+          var msg = "POST /register (HTTP " + result.status + ")\n\n" + JSON.stringify(result.data, null, 2);
+          showResponse(msg, result.status >= 400);
+        })
+        .catch(function (err) {
+          showResponse("Error: " + err.message, true);
+          console.error(err);
+        });
+    });
+
+    // ----- Login -----
+    document.getElementById("btn-login").addEventListener("click", function () {
+      var email = document.getElementById("login-email").value.trim();
+      var password = document.getElementById("login-password").value.trim();
+      if (!email || !password) {
+        showResponse("Please enter email and password.", true);
+        return;
+      }
+      var body = JSON.stringify({ email: email, password: password });
+      console.log("POST /login", body);
+      fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { status: response.status, data: data };
+          });
+        })
+        .then(function (result) {
+          var msg = "POST /login (HTTP " + result.status + ")\n\n" + JSON.stringify(result.data, null, 2);
+          showResponse(msg, result.status >= 400);
+          if (result.status === 200 && result.data.token) {
+            setStoredToken(result.data.token);
+            console.log("Token saved to localStorage. Use 'Get my profile' to call protected route.");
+          }
+        })
+        .catch(function (err) {
+          showResponse("Error: " + err.message, true);
+          console.error(err);
+        });
+    });
+
+    // ----- Clear token -----
+    document.getElementById("btn-clear-token").addEventListener("click", function () {
+      setStoredToken(null);
+      showResponse("Token cleared. Try GET /profile again - you should see 'Token missing'.", false);
+      console.log("Token cleared from localStorage.");
+    });
+
+    // ----- Get profile (protected) -----
+    document.getElementById("btn-profile").addEventListener("click", function () {
+      var token = getStoredToken();
+      console.log("GET /profile. Token present:", !!token);
+      var options = { method: "GET" };
+      if (token) {
+        options.headers = { "Authorization": "Bearer " + token };
+        console.log("Sending header: Authorization: Bearer <token>");
+      } else {
+        console.log("No token - server will return 401 Token missing.");
+      }
+      fetch("/profile", options)
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { status: response.status, data: data };
+          });
+        })
+        .then(function (result) {
+          var msg = "GET /profile (HTTP " + result.status + ")\n\n" + JSON.stringify(result.data, null, 2);
+          showResponse(msg, result.status >= 400);
+        })
+        .catch(function (err) {
+          showResponse("Error: " + err.message, true);
+          console.error(err);
+        });
+    });
+  </script>
+</body>
+</html>

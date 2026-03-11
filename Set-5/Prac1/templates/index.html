@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How the API works – Interactive Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 680px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      background: #f0f2f5;
+      color: #1a1a1a;
+    }
+    h1 {
+      color: #1a1a1a;
+      margin-bottom: 0.25rem;
+      font-size: 1.5rem;
+    }
+    .subtitle {
+      color: #555;
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+    /* Big button to trigger the API call */
+    .call-btn {
+      display: inline-block;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+    }
+    .call-btn:hover { background: #1d4ed8; }
+    .call-btn:active { transform: scale(0.98); }
+    .call-btn:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    /* Step list: shows progress through the API flow */
+    .steps {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1.5rem 0;
+      counter-reset: step;
+    }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 0.5rem;
+      background: #e2e8f0;
+      border-radius: 8px;
+      border-left: 4px solid transparent;
+      opacity: 0.6;
+      transition: opacity 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      flex-shrink: 0;
+      width: 1.5rem;
+      height: 1.5rem;
+      line-height: 1.5rem;
+      text-align: center;
+      background: #94a3b8;
+      color: white;
+      border-radius: 50%;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .step.active {
+      opacity: 1;
+      border-left-color: #2563eb;
+      background: #dbeafe;
+    }
+    .step.active::before { background: #2563eb; }
+    .step.done {
+      opacity: 1;
+      border-left-color: #16a34a;
+      background: #dcfce7;
+    }
+    .step.done::before {
+      content: "✓";
+      background: #16a34a;
+    }
+    .step-label { font-weight: 600; color: #334155; font-size: 0.9rem; }
+    .step-detail { font-size: 0.8rem; color: #64748b; margin-top: 0.2rem; }
+    /* Request/response boxes */
+    .box {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      font-family: ui-monospace, monospace;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      display: none;
+    }
+    .box.visible { display: block; }
+    .box-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 0.4rem;
+    }
+    .box pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+    .box .method { color: #34d399; }
+    .box .url { color: #60a5fa; }
+    .box .status { color: #fbbf24; }
+    /* User cards (final result) */
+    .result-title {
+      font-weight: 600;
+      color: #334155;
+      margin: 1rem 0 0.5rem 0;
+      font-size: 0.95rem;
+    }
+    .user-card {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border-left: 4px solid #2563eb;
+    }
+    .user-card .name { font-weight: 600; color: #1a1a1a; margin-bottom: 0.2rem; }
+    .user-card .email { color: #64748b; font-size: 0.85rem; }
+    .error {
+      background: #fef2f2;
+      color: #b91c1c;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+    }
+    .hint {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e2e8f0;
+    }
+  </style>
+</head>
+<body>
+  <h1>How the API works</h1>
+  <p class="subtitle">Click the button below and watch each step. You’ll see the request, the response, and the final list of users.</p>
+
+  <button class="call-btn" id="call-btn" type="button">Call GET /users</button>
+
+  <!-- Steps light up as the API call progresses -->
+  <ol class="steps" id="steps">
+    <li class="step" id="step1">
+      <span>
+        <span class="step-label">You trigger the request</span>
+        <span class="step-detail">Clicking the button runs JavaScript that calls the API.</span>
+      </span>
+    </li>
+    <li class="step" id="step2">
+      <span>
+        <span class="step-label">Browser sends GET /users</span>
+        <span class="step-detail">The browser sends an HTTP GET request to the server.</span>
+      </span>
+    </li>
+    <li class="step" id="step3">
+      <span>
+        <span class="step-label">Server runs SQL and returns JSON</span>
+        <span class="step-detail">Flask runs a query on the database and sends back JSON.</span>
+      </span>
+    </li>
+    <li class="step" id="step4">
+      <span>
+        <span class="step-label">We parse JSON and show users</span>
+        <span class="step-detail">JavaScript receives the data and builds the cards below.</span>
+      </span>
+    </li>
+  </ol>
+
+  <!-- Request box: shown when we send the request -->
+  <div class="box" id="request-box">
+    <div class="box-title">Request (what the browser sends)</div>
+    <pre id="request-content"></pre>
+  </div>
+
+  <!-- Response box: shown when we get the answer -->
+  <div class="box" id="response-box">
+    <div class="box-title">Response (what the server sends back)</div>
+    <pre id="response-content"></pre>
+  </div>
+
+  <div class="result-title" id="result-title" style="display: none;">Users from the API →</div>
+  <div id="users-container"></div>
+  <div id="error-container"></div>
+  <p class="hint" id="hint">Click "Call GET /users" to see each step in action.</p>
+
+  <script>
+    (function () {
+      var callBtn = document.getElementById('call-btn');
+      var steps = document.getElementById('steps');
+      var step1 = document.getElementById('step1');
+      var step2 = document.getElementById('step2');
+      var step3 = document.getElementById('step3');
+      var step4 = document.getElementById('step4');
+      var requestBox = document.getElementById('request-box');
+      var requestContent = document.getElementById('request-content');
+      var responseBox = document.getElementById('response-box');
+      var responseContent = document.getElementById('response-content');
+      var usersContainer = document.getElementById('users-container');
+      var errorContainer = document.getElementById('error-container');
+      var resultTitle = document.getElementById('result-title');
+      var hint = document.getElementById('hint');
+
+      function setStepActive(stepEl) {
+        [step1, step2, step3, step4].forEach(function (s) {
+          s.classList.remove('active', 'done');
+        });
+        stepEl.classList.add('active');
+      }
+
+      function setStepDone(stepEl) {
+        stepEl.classList.remove('active');
+        stepEl.classList.add('done');
+      }
+
+      function resetSteps() {
+        [step1, step2, step3, step4].forEach(function (s) {
+          s.classList.remove('active', 'done');
+        });
+        requestBox.classList.remove('visible');
+        responseBox.classList.remove('visible');
+        usersContainer.innerHTML = '';
+        errorContainer.innerHTML = '';
+        resultTitle.style.display = 'none';
+        hint.style.display = 'block';
+      }
+
+      function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      callBtn.addEventListener('click', function () {
+        if (callBtn.disabled) return;
+        callBtn.disabled = true;
+        resetSteps();
+
+        // —— Step 1: You triggered the request ——
+        setStepActive(step1);
+        requestBox.classList.add('visible');
+        var url = window.location.origin + '/users';
+        requestContent.innerHTML = '<span class="method">GET</span> ' + escapeHtml(url);
+        setStepDone(step1);
+        setStepActive(step2);
+
+        // —— Step 2 & 3: Send request, server responds ——
+        fetch('/users')
+          .then(function (response) {
+            setStepDone(step2);
+            setStepActive(step3);
+            // Show response status and we'll show body after parsing
+            var statusText = response.status + ' ' + (response.statusText || 'OK');
+            responseContent.innerHTML = 'Status: <span class="status">' + escapeHtml(statusText) + '</span>\n\n';
+            return response.json();
+          })
+          .then(function (users) {
+            setStepDone(step3);
+            setStepActive(step4);
+            // Show raw JSON in response box
+            responseContent.innerHTML += 'Body (JSON):\n' + escapeHtml(JSON.stringify(users, null, 2));
+            responseBox.classList.add('visible');
+
+            // —— Step 4: Build the user cards ——
+            usersContainer.innerHTML = '';
+            if (users.length === 0) {
+              usersContainer.innerHTML = '<p class="step-detail">No users in the database.</p>';
+            } else {
+              users.forEach(function (user) {
+                var card = document.createElement('div');
+                card.className = 'user-card';
+                card.innerHTML = '<div class="name">' + escapeHtml(user.name) + '</div><div class="email">' + escapeHtml(user.email) + '</div>';
+                usersContainer.appendChild(card);
+              });
+            }
+            setStepDone(step4);
+            resultTitle.style.display = 'block';
+            hint.style.display = 'none';
+            callBtn.disabled = false;
+          })
+          .catch(function (err) {
+            setStepDone(step2);
+            setStepActive(step3);
+            responseContent.innerHTML = 'Error: ' + escapeHtml(err.message);
+            responseBox.classList.add('visible');
+            setStepDone(step3);
+            setStepActive(step4);
+            errorContainer.innerHTML = '<div class="error">Failed to load users: ' + escapeHtml(err.message) + '</div>';
+            setStepDone(step4);
+            callBtn.disabled = false;
+          });
+      });
+    })();
+  </script>
+</body>
+</html>
